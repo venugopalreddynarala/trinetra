@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trinetra Digital Studio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96c93d);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: #333;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .navbar { transition: background-color 0.3s ease; }
+        .navbar-brand { font-size: 1.8rem; font-weight: 600; }
+        .nav-link { font-weight: 500; transition: color 0.3s ease; }
+        .nav-link:hover { color: #ff6b6b !important; }
+        #gallery img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            border-radius: 10px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        #gallery img:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .form-control, .btn { border-radius: 25px; transition: all 0.3s ease; }
+        .btn-primary {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: none;
+            padding: 10px 25px;
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(45deg, #4ecdc4, #ff6b6b);
+            transform: translateY(-2px);
+        }
+        footer {
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            color: #fff;
+            position: relative;
+        }
+        @media (max-width: 768px) {
+            #gallery img { height: 200px; }
+            .section-title { font-size: 2rem; }
+            #category-filter { width: 100% !important; }
+            #contact-form { width: 100% !important; }
+            .navbar-brand { font-size: 1.5rem; }
+        }
+        @media (max-width: 576px) {
+            #gallery img { height: 150px; }
+            .btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Trinetra Digital Studio</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="#gallery">Gallery</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#live-events">Live Events</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <section id="gallery" class="py-5">
+        <div class="container">
+            <h2 class="section-title text-center">Image Gallery</h2>
+            <div class="mb-4 text-center">
+                <select id="category-filter" class="form-select w-25 d-inline-block">
+                    <option value="all">All Categories</option>
+                    <option value="Weddings">Weddings</option>
+                    <option value="Events">Events</option>
+                    <option value="Portraits">Portraits</option>
+                </select>
+                <button id="refresh-btn" class="btn btn-primary ms-2">Refresh</button>
+            </div>
+            <div class="row" id="image-gallery"></div>
+        </div>
+    </section>
+
+    <section id="live-events" class="py-5 bg-light">
+        <div class="container">
+            <h2 class="section-title text-center">Live Events</h2>
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <h5 class="fw-bold">Upcoming Event</h5>
+                    <p id="event-details">No event scheduled</p>
+                </div>
+                <div class="col-md-6">
+                    <iframe id="youtube-live" width="100%" height="315" src="" frameborder="0" allowfullscreen></iframe>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact" class="py-5">
+        <div class="container">
+            <h2 class="section-title text-center">Contact Us</h2>
+            <div id="contact-message" class="text-center mb-4"></div>
+            <form id="contact-form" class="w-50 mx-auto">
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="name" name="name" placeholder="Your Name" required>
+                </div>
+                <div class="mb-3">
+                    <input type="email" class="form-control" id="email" name="email" placeholder="Your Email" required>
+                </div>
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="subject" name="subject" placeholder="Subject" required>
+                </div>
+                <div class="mb-3">
+                    <textarea class="form-control" id="message" name="message" rows="4" placeholder="Your Message" required></textarea>
+                </div>
+                <button type="button" id="custom-send-btn" class="btn btn-primary">Send Message</button>
+            </form>
+        </div>
+    </section>
+
+    <footer class="text-center py-3">
+        <p>© 2025 Trinetra Digital Studio. All rights reserved.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            emailjs.init("Z9UWye7KR5k-DExtN");
+            const baseUrl = 'http://localhost:3000'; // Adjust if deployed elsewhere
+
+            document.getElementById("custom-send-btn").addEventListener("click", function () {
+                const name = document.getElementById("name").value.trim();
+                const email = document.getElementById("email").value.trim();
+                const subject = document.getElementById("subject").value.trim();
+                const message = document.getElementById("message").value.trim();
+
+                if (!name || !email || !subject || !message) {
+                    alert("⚠️ Please fill in all fields.");
+                    return;
+                }
+
+                const templateParams = { from_name: name, from_email: email, subject, message };
+                emailjs.send("service_ryul3xi", "template_c0y9su8", templateParams)
+                    .then(() => {
+                        alert("✅ Email sent successfully!");
+                        document.getElementById("contact-form").reset();
+                    })
+                    .catch((error) => alert("❌ Failed to send email: " + error.text));
+
+                fetch(`${baseUrl}/api/contact`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, message })
+                }).catch(error => console.error('Error saving contact:', error));
+            });
+
+            lightbox.option({ resizeDuration: 200, wrapAround: true });
+
+            function fetchImages() {
+                fetch(`${baseUrl}/api/images?ts=${new Date().getTime()}`, { cache: 'no-store' })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Failed to fetch images: ${response.status} ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Fetched images:', data);
+                        const gallery = document.getElementById('image-gallery');
+                        gallery.innerHTML = '';
+                        if (!data || data.length === 0) {
+                            gallery.innerHTML = '<p class="text-center text-white">No images available</p>';
+                            return;
+                        }
+                        data.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = 'col-md-4 col-sm-6 mb-4 image-item';
+                            div.setAttribute('data-category', item.category);
+                            const imgUrl = `${baseUrl}${item.file_path}`;
+                            console.log('Rendering image URL:', imgUrl);
+                            div.innerHTML = `
+                                <a href="${imgUrl}" data-lightbox="gallery" data-title="${item.category}">
+                                    <img src="${imgUrl}" alt="${item.category}" class="img-fluid" onerror="this.src='https://via.placeholder.com/250'; console.error('Image load failed: ${imgUrl}');">
+                                </a>
+                                <p class="text-center mt-2 text-white">${item.category}</p>
+                            `;
+                            gallery.appendChild(div);
+                        });
+                        filterImages(document.getElementById('category-filter').value);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching images:', error);
+                        document.getElementById('image-gallery').innerHTML = `<p class="text-center text-white">Error loading images: ${error.message}</p>`;
+                    });
+            }
+
+            function fetchLiveEvent() {
+                fetch(`${baseUrl}/api/live_event?ts=${new Date().getTime()}`, { cache: 'no-store' })
+                    .then(response => {
+                        if (!response.ok) throw new Error(`Failed to fetch live event: ${response.status} ${response.statusText}`);
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Fetched live event:', data);
+                        const eventDetails = document.getElementById('event-details');
+                        const youtubeLive = document.getElementById('youtube-live');
+                        if (data && data.event_details && data.youtube_link) {
+                            eventDetails.textContent = data.event_details;
+                            youtubeLive.src = data.youtube_link;
+                        } else {
+                            eventDetails.textContent = 'No event scheduled';
+                            youtubeLive.src = '';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching live event:', error);
+                        document.getElementById('event-details').textContent = `Error loading event: ${error.message}`;
+                    });
+            }
+
+            function filterImages(category) {
+                const items = document.querySelectorAll('.image-item');
+                items.forEach(item => {
+                    item.style.display = (category === 'all' || item.getAttribute('data-category') === category) ? 'block' : 'none';
+                });
+            }
+
+            fetchImages();
+            fetchLiveEvent();
+            setInterval(() => { fetchImages(); fetchLiveEvent(); }, 5000);
+
+            document.getElementById('category-filter').addEventListener('change', function() {
+                filterImages(this.value);
+            });
+
+            document.getElementById('refresh-btn').addEventListener('click', function() {
+                fetchImages();
+                fetchLiveEvent();
+            });
+        });
+    </script>
+</body>
+</html>

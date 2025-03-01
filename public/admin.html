@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Trinetra Digital Studio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .navbar-brand { font-size: 1.8rem; font-weight: 600; }
+        .table img { border: 1px solid #ddd; border-radius: 4px; }
+        .btn-sm { margin-right: 5px; }
+        .modal-body label { font-weight: bold; }
+        .btn-primary {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: none;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(45deg, #4ecdc4, #ff6b6b);
+            transform: translateY(-2px);
+        }
+        @media (max-width: 768px) {
+            .form-control { margin-bottom: 10px; }
+            .navbar-brand { font-size: 1.5rem; }
+            .table-responsive { overflow-x: auto; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Admin Panel</a>
+            <div id="nav-links"></div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div id="message"></div>
+        <div id="admin-content"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        emailjs.init("Z9UWye7KR5k-DExtN");
+        const apiBaseUrl = 'http://localhost:3000/api';
+
+        function checkAuth() {
+            return !!localStorage.getItem('adminToken');
+        }
+
+        function updateNav() {
+            const navLinks = document.getElementById('nav-links');
+            if (checkAuth()) {
+                navLinks.innerHTML = `
+                    <a href="admin.html?action=dashboard" class="btn btn-secondary me-2">Home</a>
+                    <a href="admin.html?action=manage_admins" class="btn btn-info me-2">Manage Admins</a>
+                    <a href="admin.html?action=manage_events" class="btn btn-info me-2">Manage Events</a>
+                    <a href="admin.html?action=analytics" class="btn btn-info me-2">Analytics</a>
+                    <a href="#" onclick="logout()" class="btn btn-danger">Logout</a>
+                `;
+            } else {
+                navLinks.innerHTML = '';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            window.location.href = 'admin.html?action=login';
+        }
+
+        async function loadContent() {
+            const action = new URLSearchParams(window.location.search).get('action') || 'dashboard';
+            const contentDiv = document.getElementById('admin-content');
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = '';
+            updateNav();
+
+            if (!checkAuth() && action !== 'login' && action !== 'register') {
+                window.location.href = 'admin.html?action=login';
+                return;
+            }
+
+            const token = localStorage.getItem('adminToken');
+            const fetchOptions = {
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+            };
+
+            switch (action) {
+                case 'login':
+                    if (checkAuth()) {
+                        window.location.href = 'admin.html?action=dashboard';
+                        return;
+                    }
+                    contentDiv.innerHTML = `
+                        <h2>Admin Login</h2>
+                        <form id="login-form">
+                            <div class="mb-3">
+                                <input type="text" class="form-control" name="username" placeholder="Username" required>
+                            </div>
+                            <div class="mb-3">
+                                <input type="password" class="form-control" name="password" placeholder="Password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Login</button>
+                            <a href="admin.html?action=register" class="btn btn-link">Register New Admin</a>
+                        </form>
+                    `;
+                    document.getElementById('login-form').addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const formData = new FormData(e.target);
+                        const username = formData.get('username');
+                        const password = formData.get('password');
+                        try {
+                            const response = await fetch(`${apiBaseUrl}/login`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ username, password })
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                localStorage.setItem('adminToken', data.token);
+                                window.location.href = 'admin.html?action=dashboard';
+                            } else {
+                                messageDiv.innerHTML = '<p class="alert alert-danger">Invalid credentials.</p>';
+                            }
+                        } catch (error) {
+                            messageDiv.innerHTML = '<p class="alert alert-danger">Error logging in: ' + error.message + '</p>';
+                        }
+                    });
+                    break;
+
+                case 'register':
+                    if (!checkAuth()) {
+                        contentDiv.innerHTML = `
+                            <h2>Register Admin</h2>
+                            <p class="alert alert-info">You must be logged in as an admin to register a new admin.</p>
+                            <a href="admin.html?action=login" class="btn btn-primary">Login</a>
+                        `;
+                        return;
+                    }
+                    contentDiv.innerHTML = `
+                        <h2>Register Admin</h2>
+                        <form id="register-form">
+                            <div class="mb-3">
+                                <input type="text" class="form-control" name="username" placeholder="Username" required>
+                            </div>
+                            <div class="mb-3">
+                                <input type="password" class="form-control" name="password" placeholder="Password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Register</button>
+                            <a href="admin.html?action=login" class="btn btn-link">Back to Login</a>
+                        </form>
+                    `;
+                    document.getElementById('register-form').addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const formData = new FormData(e.target);
+                        const username = formData.get('username');
+                        const password = formData.get('password');
+                        try {
+                            const response = await fetch(`${apiBaseUrl}/register`, {
+                                method: 'POST',
+                                ...fetchOptions,
+                                body: JSON.stringify({ username, password })
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                messageDiv.innerHTML = '<p class="alert alert-success">Admin registered successfully!</p>';
+                            } else {
+                                messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + data.error + '</p>';
+                            }
+                        } catch (error) {
+                            messageDiv.innerHTML = '<p class="alert alert-danger">Error registering admin: ' + error.message + '</p>';
+                        }
+                    });
+                    break;
+
+                case 'dashboard':
+                    contentDiv.innerHTML = `
+                        <h2>Admin Dashboard</h2>
+                        <section class="mb-5">
+                            <h3>Upload Image</h3>
+                            <form id="upload-form" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <input type="file" class="form-control" name="image" accept="image/*" required>
+                                </div>
+                                <div class="mb-3">
+                                    <select class="form-control" name="category" required>
+                                        <option value="Weddings">Weddings</option>
+                                        <option value="Events">Events</option>
+                                        <option value="Portraits">Portraits</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Upload</button>
+                            </form>
+                        </section>
+                        <section class="mb-5">
+                            <h3>Manage Images</h3>
+                            <div class="table-responsive">
+                                <table class="table" id="images-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Image</th>
+                                            <th>Category</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </section>
+                        <section class="mb-5">
+                            <h3>Update Live Event</h3>
+                            <form id="event-form">
+                                <div class="mb-3">
+                                    <input type="text" class="form-control" name="event_details" placeholder="Event Details" required>
+                                </div>
+                                <div class="mb-3">
+                                    <input type="text" class="form-control" name="youtube_link" placeholder="YouTube Link" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Update</button>
+                            </form>
+                        </section>
+                        <section class="mb-5">
+                            <h3>Contact Inquiries</h3>
+                            <div class="table-responsive">
+                                <table class="table" id="contacts-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Message</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </section>
+                    `;
+                    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const formData = new FormData(e.target);
+                        try {
+                            const response = await fetch(`${apiBaseUrl}/upload`, {
+                                method: 'POST',
+                                headers: { 'Authorization': `Bearer ${token}` },
+                                body: formData
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                console.log('Uploaded image path:', data.file_path);
+                                messageDiv.innerHTML = '<p class="alert alert-success">Image uploaded! Path: ' + data.file_path + '</p>';
+                                loadImages();
+                            } else {
+                                messageDiv.innerHTML = '<p class="alert alert-danger">Error uploading image: ' + data.error + '</p>';
+                            }
+                        } catch (error) {
+                            messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + error.message + '</p>';
+                        }
+                    });
+
+                    document.getElementById('event-form').addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const formData = Object.fromEntries(new FormData(e.target));
+                        if (formData.youtube_link.includes('youtube.com/watch?v=')) {
+                            const videoId = formData.youtube_link.split('v=')[1].split('&')[0];
+                            formData.youtube_link = `https://www.youtube.com/embed/${videoId}`;
+                        } else if (formData.youtube_link.includes('youtu.be/')) {
+                            const videoId = formData.youtube_link.split('youtu.be/')[1].split('?')[0];
+                            formData.youtube_link = `https://www.youtube.com/embed/${videoId}`;
+                        }
+                        try {
+                            const response = await fetch(`${apiBaseUrl}/add_event`, {
+                                method: 'POST',
+                                ...fetchOptions,
+                                body: JSON.stringify(formData)
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                messageDiv.innerHTML = '<p class="alert alert-success">Event updated!</p>';
+                            } else {
+                                messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + data.error + '</p>';
+                            }
+                        } catch (error) {
+                            messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + error.message + '</p>';
+                        }
+                    });
+
+                    async function loadImages() {
+                        try {
+                            const response = await fetch(`${apiBaseUrl}/images`, fetchOptions);
+                            if (!response.ok) {
+                                if (response.status === 403) {
+                                    messageDiv.innerHTML = '<p class="alert alert-danger">Session expired. Please log in again.</p>';
+                                    logout();
+                                    return;
+                                }
+                                throw new Error(`HTTP error: ${response.status}`);
+                            }
+                            const data = await response.json();
+                            const tbody = document.querySelector('#images-table tbody');
+                            tbody.innerHTML = '';
+                            data.forEach(item => {
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+                                    <td>${item.id}</td>
+                                    <td><img src="${item.file_path}" width="100" onerror="this.src='https://via.placeholder.com/100'"></td>
+                                    <td>${item.category}</td>
+                                    <td><button class="btn btn-danger btn-sm delete-image" data-id="${item.id}">Delete</button></td>
+                                `;
+                                tbody.appendChild(tr);
+                            });
+                        } catch (error) {
+                            console.error('Error loading images:', error);
+                            messageDiv.innerHTML = '<p class="alert alert-danger">Error loading images: ' + error.message + '</p>';
+                        }
+                    }
+
+                    async function loadContacts() {
+                        try {
+                            const response = await fetch(`${apiBaseUrl}/contacts`, fetchOptions);
+                            const data = await response.json();
+                            const tbody = document.querySelector('#contacts-table tbody');
+                            tbody.innerHTML = '';
+                            data.forEach(item => {
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+                                    <td>${item.id}</td>
+                                    <td>${item.name}</td>
+                                    <td>${item.email}</td>
+                                    <td>${item.message}</td>
+                                    <td>${item.created_at}</td>
+                                    <td>${item.replied ? 'Replied' : 'Pending'}</td>
+                                    <td><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#replyModal${item.id}">Reply</button></td>
+                                `;
+                                const modal = document.createElement('div');
+                                modal.className = 'modal fade';
+                                modal.id = `replyModal${item.id}`;
+                                modal.innerHTML = `
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Reply to ${item.name}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form onsubmit="sendReply(event, ${item.id}, '${item.email}')">
+                                                <div class="modal-body">
+                                                    <input type="hidden" name="contact_id" value="${item.id}">
+                                                    <input type="hidden" name="email" value="${item.email}">
+                                                    <div class="mb-3">
+                                                        <label>Subject</label>
+                                                        <input type="text" class="form-control" name="subject" value="Re: Your Inquiry" required>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label>Message</label>
+                                                        <textarea class="form-control" name="message" rows="4" required></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                    <button type="submit" class="btn btn-primary">Send</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                `;
+                                document.body.appendChild(modal);
+                                tbody.appendChild(tr);
+                            });
+                        } catch (error) {
+                            console.error('Error loading contacts:', error);
+                        }
+                    }
+
+                    async function deleteImage(id) {
+                        if (!confirm('Are you sure?')) return;
+                        try {
+                            const response = await fetch(`${apiBaseUrl}/delete_image/${id}`, {
+                                method: 'DELETE',
+                                ...fetchOptions
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                messageDiv.innerHTML = '<p class="alert alert-success">Image deleted!</p>';
+                                loadImages();
+                            } else {
+                                if (data.error === 'Invalid token') {
+                                    messageDiv.innerHTML = '<p class="alert alert-danger">Session expired. Please log in again.</p>';
+                                    logout();
+                                } else {
+                                    messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + data.error + '</p>';
+                                }
+                            }
+                        } catch (error) {
+                            messageDiv.innerHTML = '<p class="alert alert-danger">Error deleting image: ' + error.message + '</p>';
+                        }
+                    }
+
+                    async function sendReply(event, id, email) {
+                        event.preventDefault();
+                        const formData = Object.fromEntries(new FormData(event.target));
+                        const templateParams = {
+                            from_name: 'Trinetra Admin',
+                            from_email: 'admin@trinetra.com',
+                            to_email: email,
+                            subject: formData.subject,
+                            message: formData.message
+                        };
+                        try {
+                            await emailjs.send("service_ryul3xi", "template_c0y9su8", templateParams);
+                            const response = await fetch(`${apiBaseUrl}/send_reply`, {
+                                method: 'POST',
+                                ...fetchOptions,
+                                body: JSON.stringify({ contact_id: id })
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                messageDiv.innerHTML = '<p class="alert alert-success">Reply sent successfully!</p>';
+                                loadContacts();
+                                bootstrap.Modal.getInstance(document.querySelector(`#replyModal${id}`)).hide();
+                            } else {
+                                messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + data.error + '</p>';
+                            }
+                        } catch (error) {
+                            messageDiv.innerHTML = '<p class="alert alert-danger">Failed to send reply email: ' + error.message + '</p>';
+                        }
+                    }
+
+                    document.addEventListener('click', async (e) => {
+                        if (e.target.classList.contains('delete-image')) {
+                            const id = e.target.getAttribute('data-id');
+                            await deleteImage(id);
+                        }
+                    });
+
+                    loadImages();
+                    loadContacts();
+                    break;
+
+                case 'manage_admins':
+                    contentDiv.innerHTML = `
+                        <h2>Manage Admins</h2>
+                        <form id="create-admin-form" class="mb-5">
+                            <div class="mb-3">
+                                <input type="text" class="form-control" name="username" placeholder="Username" required>
+                            </div>
+                            <div class="mb-3">
+                                <input type="password" class="form-control" name="password" placeholder="Password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Admin</button>
+                        </form>
+                        <div class="table-responsive">
+                            <table class="table" id="admins-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Username</th>
+                                        <th>Created At</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    `;
+                    document.getElementById('create-admin-form').addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const formData = Object.fromEntries(new FormData(e.target));
+                        try {
+                            const response = await fetch(`${apiBaseUrl}/register`, {
+                                method: 'POST',
+                                ...fetchOptions,
+                                body: JSON.stringify(formData)
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                messageDiv.innerHTML = '<p class="alert alert-success">Admin added!</p>';
+                                loadAdmins();
+                            } else {
+                                messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + data.error + '</p>';
+                            }
+                        } catch (error) {
+                            messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + error.message + '</p>';
+                        }
+                    });
+
+                    async function loadAdmins() {
+                        try {
+                            const response = await fetch(`${apiBaseUrl}/admins`, fetchOptions);
+                            const data = await response.json();
+                            const tbody = document.querySelector('#admins-table tbody');
+                            tbody.innerHTML = '';
+                            data.forEach(admin => {
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+                                    <td>${admin.id}</td>
+                                    <td>${admin.username}</td>
+                                    <td>${admin.created_at}</td>
+                                    <td>
+                                        <form onsubmit="updateAdmin(event, ${admin.id})" style="display:inline;">
+                                            <input type="text" name="username" class="form-control d-inline-block w-25" value="${admin.username}">
+                                            <input type="password" name="password" class="form-control d-inline-block w-25" placeholder="New Password (optional)">
+                                            <button type="submit" class="btn btn-info btn-sm">Update</button>
+                                            <button type="button" class="btn btn-danger btn-sm delete-admin" data-id="${admin.id}">Delete</button>
+                                        </form>
+                                    </td>
+                                `;
+                                tbody.appendChild(tr);
+                            });
+                        } catch (error) {
+                            console.error('Error loading admins:', error);
+                        }
+                    }
+
+                    async function updateAdmin(event, id) {
+                        event.preventDefault();
+                        const formData = Object.fromEntries(new FormData(event.target));
+                        try {
+                            const response = await fetch(`${apiBaseUrl}/update_admin/${id}`, {
+                                method: 'PUT',
+                                ...fetchOptions,
+                                body: JSON.stringify(formData)
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                messageDiv.innerHTML = '<p class="alert alert-success">Admin updated!</p>';
+                                loadAdmins();
+                            } else {
+                                messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + data.error + '</p>';
+                            }
+                        } catch (error) {
+                            messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + error.message + '</p>';
+                        }
+                    }
+
+                    async function deleteAdmin(id) {
+                        if (!confirm('Are you sure?')) return;
+                        try {
+                            const response = await fetch(`${apiBaseUrl}/delete_admin/${id}`, { method: 'DELETE', ...fetchOptions });
+                            const data = await response.json();
+                            if (data.success) {
+                                messageDiv.innerHTML = '<p class="alert alert-success">Admin deleted!</p>';
+                                loadAdmins();
+                            } else {
+                                messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + data.error + '</p>';
+                            }
+                        } catch (error) {
+                            messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + error.message + '</p>';
+                        }
+                    }
+
+                    document.addEventListener('click', async (e) => {
+                        if (e.target.classList.contains('delete-admin')) {
+                            const id = e.target.getAttribute('data-id');
+                            await deleteAdmin(id);
+                        }
+                    });
+
+                    loadAdmins();
+                    break;
+
+                case 'manage_events':
+                    contentDiv.innerHTML = `
+                        <h2>Manage Events</h2>
+                        <form id="add-event-form" class="mb-5">
+                            <div class="mb-3">
+                                <input type="text" class="form-control" name="event_details" placeholder="Event Details" required>
+                            </div>
+                            <div class="mb-3">
+                                <input type="text" class="form-control" name="youtube_link" placeholder="YouTube Link" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Event</button>
+                        </form>
+                        <div class="table-responsive">
+                            <table class="table" id="events-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Details</th>
+                                        <th>YouTube Link</th>
+                                        <th>Updated At</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    `;
+                    document.getElementById('add-event-form').addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const formData = Object.fromEntries(new FormData(e.target));
+                        if (formData.youtube_link.includes('youtube.com/watch?v=')) {
+                            const videoId = formData.youtube_link.split('v=')[1].split('&')[0];
+                            formData.youtube_link = `https://www.youtube.com/embed/${videoId}`;
+                        } else if (formData.youtube_link.includes('youtu.be/')) {
+                            const videoId = formData.youtube_link.split('youtu.be/')[1].split('?')[0];
+                            formData.youtube_link = `https://www.youtube.com/embed/${videoId}`;
+                        }
+                        try {
+                            const response = await fetch(`${apiBaseUrl}/add_event`, {
+                                method: 'POST',
+                                ...fetchOptions,
+                                body: JSON.stringify(formData)
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                messageDiv.innerHTML = '<p class="alert alert-success">Event added!</p>';
+                                loadEvents();
+                            } else {
+                                messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + data.error + '</p>';
+                            }
+                        } catch (error) {
+                            messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + error.message + '</p>';
+                        }
+                    });
+
+                    async function loadEvents() {
+                        try {
+                            const response = await fetch(`${apiBaseUrl}/events`, fetchOptions);
+                            const data = await response.json();
+                            const tbody = document.querySelector('#events-table tbody');
+                            tbody.innerHTML = '';
+                            data.forEach(event => {
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+                                    <td>${event.id}</td>
+                                    <td>${event.event_details}</td>
+                                    <td>${event.youtube_link}</td>
+                                    <td>${event.updated_at}</td>
+                                    <td><button class="btn btn-danger btn-sm delete-event" data-id="${event.id}">Delete</button></td>
+                                `;
+                                tbody.appendChild(tr);
+                            });
+                        } catch (error) {
+                            console.error('Error loading events:', error);
+                        }
+                    }
+
+                    async function deleteEvent(id) {
+                        if (!confirm('Are you sure?')) return;
+                        try {
+                            const response = await fetch(`${apiBaseUrl}/delete_event/${id}`, { method: 'DELETE', ...fetchOptions });
+                            const data = await response.json();
+                            if (data.success) {
+                                messageDiv.innerHTML = '<p class="alert alert-success">Event deleted!</p>';
+                                loadEvents();
+                            } else {
+                                messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + data.error + '</p>';
+                            }
+                        } catch (error) {
+                            messageDiv.innerHTML = '<p class="alert alert-danger">Error: ' + error.message + '</p>';
+                        }
+                    }
+
+                    document.addEventListener('click', async (e) => {
+                        if (e.target.classList.contains('delete-event')) {
+                            const id = e.target.getAttribute('data-id');
+                            await deleteEvent(id);
+                        }
+                    });
+
+                    loadEvents();
+                    break;
+
+                case 'analytics':
+                    contentDiv.innerHTML = `
+                        <h2>Analytics</h2>
+                        <div class="table-responsive">
+                            <table class="table" id="analytics-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Event Type</th>
+                                        <th>Details</th>
+                                        <th>Created At</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    `;
+                    async function loadAnalytics() {
+                        try {
+                            const response = await fetch(`${apiBaseUrl}/analytics`, fetchOptions);
+                            const data = await response.json();
+                            const tbody = document.querySelector('#analytics-table tbody');
+                            tbody.innerHTML = '';
+                            data.forEach(log => {
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+                                    <td>${log.id}</td>
+                                    <td>${log.event_type}</td>
+                                    <td>${log.event_details}</td>
+                                    <td>${log.created_at}</td>
+                                `;
+                                tbody.appendChild(tr);
+                            });
+                        } catch (error) {
+                            console.error('Error loading analytics:', error);
+                        }
+                    }
+                    loadAnalytics();
+                    break;
+            }
+        }
+
+        window.onload = loadContent;
+    </script>
+</body>
+</html>
